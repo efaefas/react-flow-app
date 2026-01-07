@@ -58,12 +58,22 @@ function BoxNode({ data }: NodeProps<BoxData>) {
   );
 }
 
-const initialNodes: Node<BoxData>[] = WORKFLOW_DEFS.map((def, i) => ({
-  id: String(i + 1),
-  type: 'box',
-  position: { x: 100 + i * 320, y: 120 },
-  data: { label: def.ad, def },
-}));
+// Arrange nodes in columns of 10 (10 nodes per column, vertically stacked)
+const NODES_PER_COLUMN = 10;
+const COLUMN_WIDTH = 280;
+const ROW_HEIGHT = 80;
+
+const initialNodes: Node<BoxData>[] = WORKFLOW_DEFS.map((def, i) => {
+  const column = Math.floor(i / NODES_PER_COLUMN);
+  const row = i % NODES_PER_COLUMN;
+  
+  return {
+    id: String(i + 1),
+    type: 'box',
+    position: { x: 100 + column * COLUMN_WIDTH, y: 100 + row * ROW_HEIGHT },
+    data: { label: def.ad, def },
+  };
+});
 
 const initialEdges: Edge[] = [];
 
@@ -91,6 +101,9 @@ export default function App() {
     flowX: number;
     flowY: number;
   }>({ visible: false, x: 0, y: 0, flowX: 0, flowY: 0 });
+
+  // ✅ Node type selector dropdown state
+  const [showNodeTypeSelector, setShowNodeTypeSelector] = useState(false);
 
   // ✅ File input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -134,12 +147,18 @@ export default function App() {
   // ✅ Context menu'yu kapat
   const closeContextMenu = useCallback(() => {
     setContextMenu((prev) => ({ ...prev, visible: false }));
+    setShowNodeTypeSelector(false);
   }, []);
 
-  // ✅ Yeni node ekle
-  const addNewNode = useCallback(() => {
+  // ✅ Toggle node type selector dropdown
+  const toggleNodeTypeSelector = useCallback(() => {
+    setShowNodeTypeSelector((prev) => !prev);
+  }, []);
+
+  // ✅ Yeni node ekle (with selected workflow def)
+  const addNewNode = useCallback((selectedDef?: WorkflowDef) => {
     const id = crypto?.randomUUID?.() ?? String(Date.now());
-    const def = {} as any;
+    const def = selectedDef || ({} as WorkflowDef);
 
     const newNode: Node<BoxData> = {
       id,
@@ -504,31 +523,93 @@ export default function App() {
             borderRadius: 8,
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
             zIndex: 10000,
-            minWidth: 180,
+            minWidth: 280,
             overflow: 'hidden',
           }}
         >
-          <button
-            onClick={addNewNode}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              background: 'transparent',
-              border: 'none',
-              color: '#fff',
-              fontSize: 14,
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#2a2a4e')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-          >
-            <span style={{ fontSize: 18 }}>➕</span>
-            Yeni Node Ekle
-          </button>
+          {/* Yeni Node Ekle with dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => addNewNode()}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontSize: 14,
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#2a2a4e')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ fontSize: 18 }}>➕</span>
+              Yeni Node Ekle
+            </button>
+            
+            {/* Dropdown toggle button */}
+            <button
+              onClick={toggleNodeTypeSelector}
+              style={{
+                position: 'absolute',
+                right: 8,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: '#4fc3f7',
+                border: 'none',
+                borderRadius: 4,
+                color: '#1a1a2e',
+                padding: '4px 8px',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              {showNodeTypeSelector ? '▲' : '▼'} Türler
+            </button>
+          </div>
+
+          {/* Node type selector dropdown */}
+          {showNodeTypeSelector && (
+            <div
+              style={{
+                maxHeight: 300,
+                overflowY: 'auto',
+                background: '#252545',
+                borderTop: '1px solid #4fc3f7',
+                borderBottom: '1px solid #4fc3f7',
+              }}
+            >
+              {WORKFLOW_DEFS.map((def, index) => (
+                <button
+                  key={index}
+                  onClick={() => addNewNode(def)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 16px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: 11,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid rgba(79, 195, 247, 0.1)',
+                    wordBreak: 'break-all',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#3a3a6e')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  title={def.aciklama}
+                >
+                  {def.ad}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ height: 1, background: '#4fc3f7', opacity: 0.3 }} />
           <button
             onClick={exportJson}
