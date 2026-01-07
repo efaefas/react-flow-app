@@ -8,6 +8,7 @@ import ReactFlow, {
   useNodesState,
   Handle,
   Position,
+  SelectionMode,
   type Connection,
   type Edge,
   type Node,
@@ -361,6 +362,9 @@ export default function App() {
         onPaneContextMenu={onPaneContextMenu}
         onNodeDoubleClick={onNodeDoubleClick}
         onEdgeDoubleClick={onEdgeDoubleClick}
+        selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={[1, 2]}
         fitView
       >
         <MiniMap
