@@ -21,17 +21,20 @@ import WORKFLOW_DEFS from './islemTurleri.json';
 
 
 
-type WorkflowDef = (typeof WORKFLOW_DEFS)[number];
+type WorkflowDefBase = (typeof WORKFLOW_DEFS)[number];
+
+// Extended type to include optional fields used in the app
+type WorkflowDef = WorkflowDefBase & {
+  modul?: string;
+  muhattap?: string;
+};
 
 type BoxData = {
-  // Kutunun ortasında görünen yazı
   label: string;
 
-  // JSON'dan gelen tüm detayları data içinde tutacağız:
   def: WorkflowDef;
 };
 
-// ✅ Sağ-sol bağlanan kutu (custom node)
 function BoxNode({ data }: NodeProps<BoxData>) {
   return (
     <div
@@ -71,7 +74,7 @@ export default function App() {
   const rf = useRef<ReactFlowInstance | null>(null);
   const nodeTypes = useMemo<NodeTypes>(() => ({ box: BoxNode }), []);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<BoxData>>(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<BoxData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // ✅ Modal state
@@ -80,11 +83,10 @@ export default function App() {
 
   // Form alanları (JSON'a göre)
   const [formAd, setFormAd] = useState('');
-  const [formModul, setFormModul] = useState<WorkflowDef['modul']>('BASVURU' as any);
+  const [formModul, setFormModul] = useState<string>('BASVURU');
   const [formAciklama, setFormAciklama] = useState('');
-  const [formMuhattap, setFormMuhattap] = useState<WorkflowDef['muhattap']>('PERSONEL' as any);
+  const [formMuhattap, setFormMuhattap] = useState<string | undefined>('PERSONEL');
 
-  // ✅ Context menu state
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     x: number;
@@ -93,14 +95,12 @@ export default function App() {
     flowY: number;
   }>({ visible: false, x: 0, y: 0, flowX: 0, flowY: 0 });
 
-  // ✅ File input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     rf.current = instance;
   }, []);
 
-  // ✅ Bağlantılar kaybolmasın
   const onConnect = useCallback(
     (connection: Connection) => {
       setEdges((eds) => addEdge({ ...connection, animated: true }, eds));
@@ -108,7 +108,6 @@ export default function App() {
     [setEdges]
   );
 
-  // ✅ Boş alana sağ tık -> context menu göster
   const onPaneContextMenu = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
@@ -132,12 +131,10 @@ export default function App() {
     []
   );
 
-  // ✅ Context menu'yu kapat
   const closeContextMenu = useCallback(() => {
     setContextMenu((prev) => ({ ...prev, visible: false }));
   }, []);
 
-  // ✅ Yeni node ekle
   const addNewNode = useCallback(() => {
     const id = crypto?.randomUUID?.() ?? String(Date.now());
     const def = {} as any;
@@ -156,7 +153,6 @@ export default function App() {
     closeContextMenu();
   }, [contextMenu.flowX, contextMenu.flowY, setNodes, closeContextMenu]);
 
-  // ✅ JSON olarak dışa aktar
   const exportJson = useCallback(() => {
     // Build a map of node id -> islem_tur (ad)
     const nodeIdToAd = new Map<string, string>();
@@ -194,7 +190,6 @@ export default function App() {
     closeContextMenu();
   }, [nodes, edges, closeContextMenu]);
 
-  // ✅ JSON içe aktar
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
     closeContextMenu();
@@ -211,10 +206,8 @@ export default function App() {
           const content = e.target?.result as string;
           const data = JSON.parse(content);
 
-          // Import nodes
           if (data.nodes && Array.isArray(data.nodes)) {
             const importedNodes: Node<BoxData>[] = data.nodes.map((n: any, index: number) => {
-              // Support both formats: simplified (data.ad) and full (data.def.ad)
               const ad = n.data?.ad || n.data?.def?.ad || n.data?.label || 'Imported Node';
               const aciklama = n.data?.aciklama || n.data?.def?.aciklama || '';
 
@@ -230,7 +223,6 @@ export default function App() {
             });
             setNodes(importedNodes);
 
-            // Build a map of islem_tur (ad) -> node id for edge mapping
             const adToNodeId = new Map<string, string>();
             importedNodes.forEach((n) => {
               const ad = n.data?.def?.ad || n.data?.label;
@@ -239,11 +231,9 @@ export default function App() {
               }
             });
 
-            // Import edges
             if (data.edges && Array.isArray(data.edges)) {
               const importedEdges: Edge[] = data.edges
                 .map((e: any) => {
-                  // Try to find source/target by islem_tur/sonraki_islem_tur or direct source/target
                   const sourceId = e.source || adToNodeId.get(e.islem_tur);
                   const targetId = e.target || adToNodeId.get(e.sonraki_islem_tur);
 
@@ -261,7 +251,6 @@ export default function App() {
               setEdges(importedEdges);
             }
 
-            // Fit view after import
             setTimeout(() => {
               rf.current?.fitView({ padding: 0.2 });
             }, 100);
@@ -279,21 +268,19 @@ export default function App() {
     [setNodes, setEdges]
   );
 
-  // ✅ Node çift tık -> modal aç (JSON'dan gelen değerleri göster)
   const onNodeDoubleClick = useCallback((_: React.MouseEvent, node: Node<BoxData>) => {
     setEditingNodeId(node.id);
 
     const def = node.data.def;
 
     setFormAd(def.ad ?? '');
-    setFormModul(def.modul ?? ('BASVURU' as any));
+    setFormModul(def.modul ?? 'BASVURU');
     setFormAciklama(def.aciklama ?? '');
-    setFormMuhattap(def.muhattap ?? null);
+    setFormMuhattap(def.muhattap ?? undefined);
 
     setIsModalOpen(true);
   }, []);
 
-  // ✅ Edge çift tık -> bağlantıyı sil
   const onEdgeDoubleClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
       setEdges((eds) => eds.filter((e) => e.id !== edge.id));
@@ -306,7 +293,6 @@ export default function App() {
     setEditingNodeId(null);
   }, []);
 
-  // ✅ Kaydet -> node.data.def güncelle + kutuda ad göster
   const saveNode = useCallback(() => {
     if (!editingNodeId) return;
 
@@ -331,7 +317,7 @@ export default function App() {
           ...n,
           data: {
             ...n.data,
-            label: adTrimmed, // ✅ kutunun ortasındaki yazı
+            label: adTrimmed,
             def: newDef,
           },
         };
@@ -384,7 +370,6 @@ export default function App() {
         <Background />
       </ReactFlow>
 
-      {/* ✅ Modal (JSON alanları) */}
       {isModalOpen && (
         <div
           onClick={closeModal}
