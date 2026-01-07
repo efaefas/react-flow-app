@@ -1,0 +1,214 @@
+[
+  {
+    "ad": "OI_KONTROL_TUTANAGI_ILK_KONTROL_ONAY",
+    "aciklama": "Hazırlanan Ön İnceleme Birimi kontrol tutanağının ilk kontrolsonucu onay verilmesi ve birim amire onaya gönderilmesi"
+  },
+  {
+    "ad": "OI_KONTROL_TUTUANAGI_AMIR_ONAYI_ILE_HYG",
+    "aciklama": "Amir onayı ile HYG yazılması"
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_BILGI_DOGRULAMA",
+    "aciklama": "HYG Şekli eksiklik olarak \"TC kimlik numarası, ad soyad, doğum tarihi, tebligata esas iletişim bilgilerinin doğrulanması gerekiyor.\" bildirildi"
+  },
+  {
+    "ad": "OI_KONTROL_TUTANAGI_AMIR_KONTROL_ONAY",
+    "aciklama": "Hazırlanan Ön İnceleme Birimi kontrol tutanağı Amir onayının alınması ve sonraki işlem için uzmana atanması"
+  },
+  {
+    "ad": "OI_KONTROL_TUTANAGI_AMIR_KONTROL_RED",
+    "aciklama": "Hazırlanan Ön İnceleme Birimi kontrol tutanağının amir tarafından red edilmesi ve düzenleme için atanması"
+  },
+  {
+    "ad": "OI_KONTROL_TUTANAGI_ILK_KONTROL",
+    "aciklama": "Hazırlanan Ön İnceleme Birimi kontrol tutanağının ilk kontrol edilmesi."
+  },
+  {
+    "ad": "OI_KONTROL_TUTANAGI_ILK_KONTROL_RED",
+    "aciklama": "Hazırlanan Ön İnceleme Birimi kontrol tutanağının ilk kontrolü sonucu uygun bulunmadı, dosya uzmanına geri gönderildi."
+  },
+  {
+    "ad": "GELEN_BASVURU",
+    "aciklama": "Gelen Başvuru"
+  },
+  {
+    "ad": "OI_KONTROL_TUTANAGI_HAZIRLANMASI",
+    "aciklama": "Gelen başvurunun şekli eksiklik kontrolünü yapılarak Ön İnceleme Birimi kontrol tutanağının hazırlanması."
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_ANLASILIR_DEGIL",
+    "aciklama": "HYG Şekli eksiklik olarak \"Başvuru anlaşılır, okunaklı değil\""
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_NET_DEGIL",
+    "aciklama": "HYG Şekli eksiklik olarak  \"Başvuru konusu, iddia ve talep net değil\""
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_30_GUNLUK_SARTI_SAGLAMIYOR",
+    "aciklama": "HYG Şekli eksiklik olarak  \"30 günlük süre şartını sağlamıyor\""
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_MUHATAP_BASVURU_SARTI_SAGLANMAMIS",
+    "aciklama": "HYG Şekli eksiklik olarak  \"Muhataba başvuru şartı sağlanmamış\""
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_BILGI_BELGE_EKSIK",
+    "aciklama": "HYG Şekli eksiklik olarak \"İddialarını destekler nitelikte bilgi belge eksik\""
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_GENEL_BASVURU_SARTLARI",
+    "aciklama": "HYG Şekli eksiklik olarak  genel başvuru şartları (muhataba başvuru+süre şartı+ek bilgi belge)"
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_VEKALET_BELGESI",
+    "aciklama": "HYG Şekli eksiklik olarak vekalete ilişkin belge eksik"
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_ENGELLI_RAPORU",
+    "aciklama": "HYG Şekli eksiklik olarak  engel durumuna ilişkin engelli raporu eksik"
+  },
+  {
+    "ad": "OI_HYG_SEKLI_EKSIKLIK_KURUM_KARARINA_ITIRAZ",
+    "aciklama": "HYG Şekli eksiklik olarak Kurum kararına itiraz"
+  },
+  {
+    "ad": "OI_HYG_ESASA_ILISKIN_AYRIMCILIK_IDDIASI_TEMELININ_NETLESTIRILMESI",
+    "aciklama": "HYG Esasa ilişkin Ayrımcılık/mobbing iddiasında temelin netleştirilmesi gerekiyor"
+  },
+  {
+    "ad": "OI_HYG_ESASA_ILISKIN_4857_KANUNA_TABILIK_DURUMUNUN_NETLESTIRILMESI",
+    "aciklama": "HYG Esasa ilişkin iş sözleşmesine ilişkin iddialar varsa 4857 Kanuna tabi çalışıp çalışmadığının netleştirilmesi gerekiyor"
+  },
+  {
+    "ad": "OI_HYG_ESASA_ILISKIN_HAK_IHLALI_BILGISININ_NETLESTIRILMESI",
+    "aciklama": "HYG Esasa ilişkin hak ihlaline ilişkin bilgilerin netleştirilmesi gerekiyor"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI",
+    "aciklama": "HYG Kurumun görev alanına girmemesi nedeniyle genel başvuru şartları hususunda başvurana bilgi verildi"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_YARGI_YETKISINDE",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-yargı yetkisi kapsamında"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_YASAMA_YETKISINDE",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-yasama yetkisi kapsamında"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_YARGI_DENETIMI_DISI",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-Anayasanın yargı denetimi dışında bıraktığı işlemlerden"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_HAKIMLER_SAVCILAR_KURULUNA_ILISKIN",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-Hâkimler ve Savcılar Kurulu kararlarına ilişkin işlemler"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_4857_KANUN_KAPSAMINDA",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-4857 sayılı İş Kanununun 5 inci maddesi kapsamına giren ayrımcılık iddialarına ilişkin"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_DIGER_KONULAR",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-konusu bakımından diğer (örneğin faturanın yüksek gelmesi, apartmanda gürültü yapılması)"
+  },
+  {
+    "ad": "OI_HYG_KURUMUN_GOREV_ALANINA_GIRMEMESI_KONUSU_SUC_TESKIL_EDEN",
+    "aciklama": "HYG Kurumun görev alanına girmemesi-Konusu suç teşkil eden olaylar için Cumhuriyet Başsavcılığına başvuru yapılabilir"
+  },
+  {
+    "ad": "OI_ARSIV_BASVURU_ARSIVE_KALDIRILDI_KURUMDA_INCELENMEKTE",
+    "aciklama": "ARSIV Başvuru Arşive Kaldırıldı-Kurumda incelemekte ve araştırılmakta olan bir başvuruyla sebepleri, konusu ve tarafları aynı"
+  },
+  {
+    "ad": "OI_ARSIV_BASVURU_ARSIVE_KALDIRILDI_BASVURANA_BILGI_VERILDI",
+    "aciklama": "ARSIV Başvuru Arşive Kaldırıldı-Başvurana daha önce başvurusuna ilişkin bilgi verildi"
+  },
+  {
+    "ad": "OI_ARSIV_BASVURU_ARSIVE_KALDIRILDI_BASVURAN_ILETISIM_BILGISI_EKSIK",
+    "aciklama": "ARSIV Başvuru Arşive Kaldırıldı-Başvuranın iletişim bilgileri yetersiz olduğundan yazı tebliğ edilemedi"
+  },
+  {
+    "ad": "OI_GKE_GKE_YAZISI_YARGI_YETKISI",
+    "aciklama": "GKE GKE-yargı yetkisi kapsamında"
+  },
+  {
+    "ad": "OI_GKE_GKE_YAZISI_YASAMA_YETKISI",
+    "aciklama": "GKE GKE-yasama yetkisi kapsamında"
+  },
+  {
+    "ad": "OI_GKE_GKE_YARGI_DENETIMI_DISI",
+    "aciklama": "GKE GKE-Anayasanın yargı denetimi dışında bıraktığı işlemlerden"
+  },
+  {
+    "ad": "OI_GKE_GKE_HAKIMLER_SAVCILAR_KURULUNA_ILISKIN",
+    "aciklama": "GKE GKE-Hâkimler ve Savcılar Kurulu kararlarına ilişkin işlemler"
+  },
+  {
+    "ad": "OI_GKE_GKE_4857_KANUN_KAPSAMINDA",
+    "aciklama": "GKE GKE-4857 sayılı İş Kanununun 5 inci maddesi kapsamına giren ayrımcılık iddialarına ilişkin"
+  },
+  {
+    "ad": "OI_GKE_GKE_DIGER_KONULAR",
+    "aciklama": "GKE GKE-konusu bakımından diğer (örneğin faturanın yüksek gelmesi, apartmanda gürültü yapılması)"
+  },
+  {
+    "ad": "OI_GKE_GKE_KURUMDA_INCELENMEKTE",
+    "aciklama": "GKE GKE-Kurumda incelemekte ve araştırılmakta olan bir başvuruyla sebepleri, konusu ve tarafları aynı"
+  },
+  {
+    "ad": "OI_GKE_GKE_KURUMDA_SONUCLANDIRILAN",
+    "aciklama": "GKE GKE-Kurum tarafından daha önce sonuçlandırılan bir başvuruyla sebepleri, konusu ve tarafları aynı olan"
+  },
+  {
+    "ad": "OI_GKE_GKE_AYRIMCILIK_YASAGI_IHLALINDEN_ZARAR_YOK",
+    "aciklama": "GKE GKE-Ayrımcılık yasağı ihlalinden zarar görmeyen"
+  },
+  {
+    "ad": "OI_ESAS_ESAS_INCELEME_UOM",
+    "aciklama": "ESAS Esas incelemesi yapılmak üzere UÖM Birimine gönderildi"
+  },
+  {
+    "ad": "OI_ESAS_ESAS_INCELEME_AME",
+    "aciklama": "ESAS Esas incelemesi yapılmak AME Birimine gönderildi."
+  },
+  {
+    "ad": "OI_RESEN_RESEN_INCELEME_IHKG",
+    "aciklama": "RESEN Resen incelenmek üzere İHKG Birimine gönderildi"
+  },
+  {
+    "ad": "OI_IIG_ILGILISI_NEDENIYLE_ILGILI_KURUMA",
+    "aciklama": "IIG Kurumun görev alanına girmiyor, görev alanına giren bir Kuruma gönderilmesi"
+  },
+  {
+    "ad": "OI_IIG_ILGILISI_NEDENIYLE_ILGILI_KAMU_IDARESINE",
+    "aciklama": "IIG Kurumumuza sehven gönderilmiş, kamu kurumuysa ilgili idareye gönderilmesi."
+  },
+  {
+    "ad": "OI_IIG_ILGILISI_NEDENIYLE_ILGILI_IADE",
+    "aciklama": "IIG Kurumumuza sehven gönderilmiş, kamu kurumu değilse iade edilmesi."
+  },
+  {
+    "ad": "OI_HYG_BASVURANA_BASVURU_AKIBETI_HAKKINDA_BILGI_VERILDI",
+    "aciklama": "HYG Başvurana başvurusunun akıbeti hakkında bilgi verildi"
+  },
+  {
+    "ad": "OI_HYG_BASVURANA_BASKASI_ADINA_BASVURU_NEDENIYLE_HYG_YAZILDI",
+    "aciklama": "HYG Başvuru doğrudan zarar görme şartını sağlamadığı hususunda HYG yazıldı (başkası adına başvuru)"
+  },
+  {
+    "ad": "OI_HYG_HUKUKI_YOL_GOSTERILDI",
+    "aciklama": "HYG Kurum kararına itiraz hususunda hukuki yol gösterildi"
+  },
+  {
+    "ad": "OI_KVYO_KARAR_VERILMESINE_YER_OLMADIGI_BASVURUCU_BASVURUDAN_VAZGECTI",
+    "aciklama": "KVYO Karar verilmesine yer olmadığı-Başvurucunun başvurusundan vazgeçmesi"
+  },
+  {
+    "ad": "OI_KVYO_KARAR_VERILMESINE_YER_OLMADIGI_BASVURU_KISILIGI_SONA_ERDI",
+    "aciklama": "KVYO Başvurucu gerçek kişi ise ölümü veya tüzel kişi ise tüzel kişiliğinin sona ermesi"
+  },
+  {
+    "ad": "OI_KVYO_KARAR_VERILMESINE_YER_OLMADIGI_BASVURU_KONUSUNDA_DAVA_ACILDI",
+    "aciklama": "KVYO İnceleme ve araştırma devam ederken başvuru konusu hakkında dava açılması"
+  }
+]
