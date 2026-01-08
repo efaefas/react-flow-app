@@ -61,13 +61,15 @@ type BoxData = {
 
 type JumpData = {
   nodeType: 'jump';
-  label: string;
+  label?: string;      // Keep for backwards compatibility
+  landId?: string;     // Reference to connected land node
   colorIndex: number;
 };
 
 type LandData = {
   nodeType: 'land';
-  label: string;
+  label?: string;      // Keep for backwards compatibility
+  nextNodeId?: string; // Node connected to this land (from edges)
   colorIndex: number;
 };
 
@@ -90,17 +92,17 @@ function JumpNode({ data }: NodeProps<JumpData>) {
   return (
     <div
       style={{
-        width: 70,
+        width: 60,
         height: 50,
         borderRadius: 8,
         background: colorSet.jump,
         border: `3px solid ${colorSet.border}`,
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 4,
-        fontSize: 12,
+        gap: 2,
+        fontSize: 10,
         fontWeight: 700,
         color: '#fff',
         position: 'relative',
@@ -109,10 +111,10 @@ function JumpNode({ data }: NodeProps<JumpData>) {
       }}
     >
       <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 19V5M5 12l7-7 7 7" />
       </svg>
-      <span style={{ fontSize: 14, fontWeight: 800, textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>{data.label}</span>
+      <span style={{ fontSize: 9, fontWeight: 600, textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>JUMP</span>
     </div>
   );
 }
@@ -123,17 +125,17 @@ function LandNode({ data }: NodeProps<LandData>) {
   return (
     <div
       style={{
-        width: 70,
+        width: 60,
         height: 50,
         borderRadius: 8,
         background: colorSet.land,
         border: `3px solid ${colorSet.landBorder}`,
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 4,
-        fontSize: 12,
+        gap: 2,
+        fontSize: 10,
         fontWeight: 700,
         color: '#fff',
         position: 'relative',
@@ -141,8 +143,8 @@ function LandNode({ data }: NodeProps<LandData>) {
         userSelect: 'none',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 800, textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>{data.label}</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <span style={{ fontSize: 9, fontWeight: 600, textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>LAND</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 5v14M5 12l7 7 7-7" />
       </svg>
       <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
@@ -214,6 +216,12 @@ function convertDBNodeToReactFlowNode(dbNode: WorkflowDefFromDB): Node<NodeData>
   };
 }
 
+// Get token from URL query string
+function getTokenFromURL(): string | null {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('t');
+}
+
 export default function App() {
   const rf = useRef<ReactFlowInstance | null>(null);
   const nodeTypes = useMemo<NodeTypes>(() => ({ 
@@ -222,10 +230,31 @@ export default function App() {
     land: LandNode,
   }), []);
 
+  // Token authentication
+  const [token] = useState<string | null>(() => getTokenFromURL());
+  const [bypassAuth, setBypassAuth] = useState(false);
+  const isUnauthorized = !token && !bypassAuth;
+
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowDefFromDB[]>([]);
   const [, setDataSource] = useState<'static' | 'api' | null>(null);
+  
+  // Derived: templates are nodes with x=-1, y=-1 (box type only)
+  const templates = useMemo(() => 
+    nodes.filter(n => 
+      n.position.x === -1 && n.position.y === -1 && n.type === 'box'
+    ).map(n => {
+      const boxData = n.data as BoxData;
+      return {
+        id: n.id,
+        ad: boxData.def?.ad || boxData.label || '',
+        aciklama: boxData.def?.aciklama || '',
+      };
+    }), [nodes]);
+  
+  // Derived: visible nodes are those with valid positions (x >= 0, y >= 0)
+  const visibleNodes = useMemo(() => 
+    nodes.filter(n => n.position.x >= 0 && n.position.y >= 0), [nodes]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -233,8 +262,8 @@ export default function App() {
   const [formAd, setFormAd] = useState('');
   const [formAciklama, setFormAciklama] = useState('');
   const [isJumpLandModalOpen, setIsJumpLandModalOpen] = useState(false);
-  const [jumpLandLabel, setJumpLandLabel] = useState('');
   const [jumpLandColorIndex, setJumpLandColorIndex] = useState(0);
+  const [selectedLandId, setSelectedLandId] = useState<string | null>(null);
   const [editingNodeType, setEditingNodeType] = useState<'jump' | 'land' | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
@@ -243,16 +272,26 @@ export default function App() {
     flowX: number;
     flowY: number;
   }>({ visible: false, x: 0, y: 0, flowX: 0, flowY: 0 });
-  const [showNodeTypeSelector, setShowNodeTypeSelector] = useState(false);
+  const [nodeMenuHovered, setNodeMenuHovered] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    // Don't fetch if no token (unauthorized)
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchWorkflowData = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
-        const response = await fetch(`${API_BASE_URL}/workflow`);
+        const response = await fetch(`${API_BASE_URL}/workflow?t=${encodeURIComponent(token)}`);
+        
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Yetkisiz erişim. Token geçersiz.');
+        }
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: Failed to fetch workflow data`);
@@ -260,21 +299,11 @@ export default function App() {
         
         const data: WorkflowDataFromDB = await response.json();
         
-        const placedNodes: Node<NodeData>[] = [];
-        const templates: WorkflowDefFromDB[] = [];
+        // Store ALL nodes (including templates with x=-1, y=-1) in single array
+        const allNodes: Node<NodeData>[] = data.nodes.map(node => convertDBNodeToReactFlowNode(node));
         
-        data.nodes.forEach((node) => {
-          if (node.x >= 0 && node.y >= 0) {
-            placedNodes.push(convertDBNodeToReactFlowNode(node));
-          }
-          if (node.type === 'box') {
-            templates.push(node);
-          }
-        });
-        
-        setNodes(placedNodes);
+        setNodes(allNodes);
         setEdges(data.edges.map(e => ({ ...e, animated: true })));
-        setWorkflowTemplates(templates);
         setDataSource('api');
         
         setTimeout(() => {
@@ -287,26 +316,29 @@ export default function App() {
         
         setNodes([]);
         setEdges([]);
-        setWorkflowTemplates([]);
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchWorkflowData();
-  }, [setNodes, setEdges]);
+  }, [token, setNodes, setEdges]);
 
   const loadStaticData = useCallback(() => {
-    const staticTemplates: WorkflowDefFromDB[] = STATIC_WORKFLOW_DEFS.map((def, i) => ({
+    // Create template nodes with x=-1, y=-1 (appear in Nodelar dropdown, not on canvas)
+    const templateNodes: Node<NodeData>[] = STATIC_WORKFLOW_DEFS.map((def, i) => ({
       id: `template-${i + 1}`,
-      ad: def.ad ?? '',
-      aciklama: def.aciklama ?? '',
-      x: -1,
-      y: -1,
-      type: 'box' as const,
+      type: 'box',
+      position: { x: -1, y: -1 },  // Template marker
+      data: { 
+        nodeType: 'box' as const, 
+        label: def.ad ?? '', 
+        def: { ad: def.ad, aciklama: def.aciklama } 
+      },
     }));
 
-    const staticNodes: Node<NodeData>[] = STATIC_WORKFLOW_DEFS.map((def, i) => {
+    // Also create visible nodes on canvas (arranged in columns)
+    const visibleStaticNodes: Node<NodeData>[] = STATIC_WORKFLOW_DEFS.map((def, i) => {
       const column = Math.floor(i / NODES_PER_COLUMN);
       const row = i % NODES_PER_COLUMN;
       
@@ -322,9 +354,10 @@ export default function App() {
       };
     });
 
-    setNodes(staticNodes);
+    setBypassAuth(true);
+    // Store both templates (x=-1, y=-1) and visible nodes in single array
+    setNodes([...templateNodes, ...visibleStaticNodes]);
     setEdges([]);
-    setWorkflowTemplates(staticTemplates);
     setDataSource('static');
     setError(null);
     setIsLoading(false);
@@ -340,7 +373,8 @@ export default function App() {
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((eds) => addEdge({ ...connection, animated: true }, eds));
+      const edgeId = crypto?.randomUUID?.() ?? `edge-${Date.now()}`;
+      setEdges((eds) => addEdge({ ...connection, id: edgeId, animated: true }, eds));
     },
     [setEdges]
   );
@@ -370,59 +404,31 @@ export default function App() {
 
   const closeContextMenu = useCallback(() => {
     setContextMenu((prev) => ({ ...prev, visible: false }));
-    setShowNodeTypeSelector(false);
+    setNodeMenuHovered(false);
   }, []);
 
-  const toggleNodeTypeSelector = useCallback(() => {
-    setShowNodeTypeSelector((prev) => !prev);
-  }, []);
-
-  const getNextJumpLandLabel = useCallback(() => {
-    const existingLabels = nodes
-      .filter((n) => n.type === 'jump' || n.type === 'land')
-      .map((n) => n.data.label);
-    
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let index = 0;
-    
-    while (true) {
-      let label = '';
-      let temp = index;
-      do {
-        label = alphabet[temp % 26] + label;
-        temp = Math.floor(temp / 26) - 1;
-      } while (temp >= 0);
-      
-      if (!existingLabels.includes(label)) {
-        return label;
-      }
-      index++;
-    }
+  // Get all land nodes with display names (Land 1, Land 2, etc.)
+  const getLandNodesWithLabels = useCallback(() => {
+    const landNodes = nodes.filter((n) => n.type === 'land' && n.data.nodeType === 'land');
+    return landNodes.map((n, index) => ({
+      id: n.id,
+      displayName: `Land ${index + 1}`,
+      colorIndex: (n.data as LandData).colorIndex,
+    }));
   }, [nodes]);
 
-  const getColorIndexForLabel = useCallback((label: string) => {
-    const jumpLandNodes = nodes.filter((n) => n.type === 'jump' || n.type === 'land');
-    const existingNode = jumpLandNodes.find((n) => n.data.label === label);
-    
-    if (existingNode && existingNode.data.nodeType !== 'box') {
-      return existingNode.data.colorIndex;
-    }
-    
-    const usedIndices = new Set<number>();
-    jumpLandNodes.forEach((n) => {
-      if (n.data.nodeType !== 'box') {
-        usedIndices.add(n.data.colorIndex);
-      }
-    });
-    
-    for (let i = 0; i < JUMP_LAND_COLORS.length; i++) {
-      if (!usedIndices.has(i)) {
-        return i;
-      }
-    }
-    
-    return jumpLandNodes.length % JUMP_LAND_COLORS.length;
-  }, [nodes]);
+  // Get available (unconnected) land nodes for jump selection
+  const getAvailableLandNodes = useCallback(() => {
+    const allLands = getLandNodesWithLabels();
+    const connectedLandIds = new Set(
+      nodes
+        .filter((n) => n.type === 'jump' && n.data.nodeType === 'jump')
+        .map((n) => (n.data as JumpData).landId)
+        .filter(Boolean)
+    );
+    // Include the currently selected land (for editing existing jump)
+    return allLands.filter((land) => !connectedLandIds.has(land.id) || land.id === selectedLandId);
+  }, [nodes, getLandNodesWithLabels, selectedLandId]);
 
   const addNewEmptyNode = useCallback(() => {
     const id = crypto?.randomUUID?.() ?? String(Date.now());
@@ -442,7 +448,7 @@ export default function App() {
     closeContextMenu();
   }, [contextMenu.flowX, contextMenu.flowY, setNodes, closeContextMenu]);
 
-  const addNodeFromTemplate = useCallback((template: WorkflowDefFromDB) => {
+  const addNodeFromTemplate = useCallback((template: { id: string; ad: string; aciklama: string }) => {
     const id = crypto?.randomUUID?.() ?? String(Date.now());
     
     const newNode: Node<BoxData> = {
@@ -463,47 +469,64 @@ export default function App() {
 
   const addJumpNode = useCallback(() => {
     const id = crypto?.randomUUID?.() ?? String(Date.now());
-    const label = getNextJumpLandLabel();
-    const colorIndex = getColorIndexForLabel(label);
+    // Get next available color index
+    const usedIndices = new Set(
+      nodes
+        .filter((n) => n.type === 'jump' || n.type === 'land')
+        .map((n) => (n.data as JumpData | LandData).colorIndex)
+    );
+    let colorIndex = 0;
+    for (let i = 0; i < JUMP_LAND_COLORS.length; i++) {
+      if (!usedIndices.has(i)) {
+        colorIndex = i;
+        break;
+      }
+    }
 
     const newNode: Node<JumpData> = {
       id,
       type: 'jump',
       position: { x: contextMenu.flowX, y: contextMenu.flowY },
-      data: { nodeType: 'jump', label, colorIndex },
+      data: { nodeType: 'jump', colorIndex },
     };
 
     setNodes((nds) => [...nds, newNode]);
     closeContextMenu();
-  }, [contextMenu.flowX, contextMenu.flowY, setNodes, closeContextMenu, getNextJumpLandLabel, getColorIndexForLabel]);
+  }, [contextMenu.flowX, contextMenu.flowY, nodes, setNodes, closeContextMenu]);
 
   const addLandNode = useCallback(() => {
     const id = crypto?.randomUUID?.() ?? String(Date.now());
-    const label = getNextJumpLandLabel();
-    const colorIndex = getColorIndexForLabel(label);
+    // Get next available color index
+    const usedIndices = new Set(
+      nodes
+        .filter((n) => n.type === 'jump' || n.type === 'land')
+        .map((n) => (n.data as JumpData | LandData).colorIndex)
+    );
+    let colorIndex = 0;
+    for (let i = 0; i < JUMP_LAND_COLORS.length; i++) {
+      if (!usedIndices.has(i)) {
+        colorIndex = i;
+        break;
+      }
+    }
 
     const newNode: Node<LandData> = {
       id,
       type: 'land',
       position: { x: contextMenu.flowX, y: contextMenu.flowY },
-      data: { nodeType: 'land', label, colorIndex },
+      data: { nodeType: 'land', colorIndex },
     };
 
     setNodes((nds) => [...nds, newNode]);
     closeContextMenu();
-  }, [contextMenu.flowX, contextMenu.flowY, setNodes, closeContextMenu, getNextJumpLandLabel, getColorIndexForLabel]);
-
-  const getExistingLabels = useCallback(() => {
-    const labels = new Set<string>();
-    nodes.forEach((n) => {
-      if (n.type === 'jump' || n.type === 'land') {
-        labels.add(n.data.label);
-      }
-    });
-    return Array.from(labels).sort();
-  }, [nodes]);
+  }, [contextMenu.flowX, contextMenu.flowY, nodes, setNodes, closeContextMenu]);
 
   const saveToBackend = useCallback(async () => {
+    if (!token) {
+      alert('❌ Token bulunamadı. Kaydetme yapılamaz.');
+      return;
+    }
+
     try {
       const placedNodesData: WorkflowDefFromDB[] = nodes.map((n) => {
         if (n.data.nodeType === 'jump') {
@@ -544,20 +567,23 @@ export default function App() {
       });
 
       const edgesData: EdgeFromDB[] = edges.map((e) => ({
-        id: e.id,
+        id: e.id || crypto?.randomUUID?.() || `edge-${Date.now()}`,
         source: e.source,
         target: e.target,
       }));
 
-      const response = await fetch(`${API_BASE_URL}/workflow`, {
+      const response = await fetch(`${API_BASE_URL}/workflow?t=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          nodes: placedNodesData, 
+          nodes: placedNodesData,  // All nodes including templates (x=-1, y=-1)
           edges: edgesData,
-          templates: workflowTemplates,
         }),
       });
+
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Yetkisiz erişim. Token geçersiz.');
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: Failed to save`);
@@ -569,7 +595,7 @@ export default function App() {
       alert('❌ Kaydetme hatası: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
       console.error('Save error:', err);
     }
-  }, [nodes, edges, workflowTemplates, closeContextMenu]);
+  }, [token, nodes, edges, closeContextMenu]);
 
   const exportJson = useCallback(() => {
     const nodeIdToAd = new Map<string, string>();
@@ -603,10 +629,19 @@ export default function App() {
           type: 'jump',
           x: n.position?.x ?? 0,
           y: n.position?.y ?? 0,
-          label: jumpData.label,
+          land: jumpData.landId || null,  // Reference to connected land node
           colorIndex: jumpData.colorIndex,
         };
       });
+
+    // Build a map of land node ID -> connected target node ID (from edges)
+    const landNextNodeMap = new Map<string, string>();
+    edges.forEach((e) => {
+      const sourceNode = nodes.find((n) => n.id === e.source);
+      if (sourceNode?.type === 'land') {
+        landNextNodeMap.set(e.source, e.target);
+      }
+    });
 
     const landNodes = nodes
       .filter((n) => n.type === 'land' && n.data.nodeType === 'land')
@@ -617,45 +652,34 @@ export default function App() {
           type: 'land',
           x: n.position?.x ?? 0,
           y: n.position?.y ?? 0,
-          label: landData.label,
+          nextNode: landNextNodeMap.get(n.id) || null,  // Node connected to this land
           colorIndex: landData.colorIndex,
         };
       });
 
-    const templates = workflowTemplates.map((d) => ({
-      id: d.id,
-      type: d.type,
-      x: -1,
-      y: -1,
-      ad: d.ad,
-      aciklama: d.aciklama,
-      jumpLandLabel: d.jumpLandLabel,
-      colorIndex: d.colorIndex,
-    }));
-
-    const jumpLinks: { jumpLabel: string; jumpNodeId: string; landNodeId: string }[] = [];
+    // Jump links are now stored directly in jump nodes via 'land' field
+    const jumpLinks: { jumpNodeId: string; landNodeId: string }[] = [];
     jumpNodes.forEach((jump) => {
-      const matchingLand = landNodes.find((land) => land.label === jump.label);
-      if (matchingLand) {
+      if (jump.land) {
         jumpLinks.push({
-          jumpLabel: jump.label,
           jumpNodeId: jump.id,
-          landNodeId: matchingLand.id,
+          landNodeId: jump.land,
         });
       }
     });
 
+    // All nodes in single array (including templates with x=-1, y=-1)
     const exportData = {
       nodes: [...boxNodes, ...jumpNodes, ...landNodes],
       edges: edges.map((e) => ({
-        id: e.id || (crypto?.randomUUID?.() ?? String(Date.now() + Math.random())),
+        // Always use UUID4 for edge IDs (replace any reactflow-generated IDs)
+        id: crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         source: e.source,
         target: e.target,
         islem_tur: nodeIdToAd.get(e.source) || e.source,
         sonraki_islem_tur: nodeIdToAd.get(e.target) || e.target,
       })),
       jumpLinks,
-      templates,
     };
 
     const jsonStr = JSON.stringify(exportData, null, 2);
@@ -669,7 +693,7 @@ export default function App() {
 
     URL.revokeObjectURL(url);
     closeContextMenu();
-  }, [nodes, edges, workflowTemplates, closeContextMenu]);
+  }, [nodes, edges, closeContextMenu]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -688,29 +712,28 @@ export default function App() {
           const data = JSON.parse(content);
 
           if (data.nodes && Array.isArray(data.nodes)) {
-            const placedNodes: Node<NodeData>[] = [];
+            // All nodes go into single array (including templates with x=-1, y=-1)
+            const allNodes: Node<NodeData>[] = [];
 
             data.nodes.forEach((n: any, index: number) => {
               const x = n.x ?? n.position?.x;
               const y = n.y ?? n.position?.y;
               
-              if (x === -1 && y === -1) {
-                return;
-              }
-
+              // Determine position (x=-1, y=-1 for templates, otherwise actual position)
               const position = { 
                 x: typeof x === 'number' ? x : 100 + (index % 5) * 250, 
                 y: typeof y === 'number' ? y : 100 + Math.floor(index / 5) * 100 
               };
 
               if (n.type === 'jump') {
-                placedNodes.push({
+                allNodes.push({
                   id: n.id || crypto?.randomUUID?.() || String(Date.now() + index),
                   type: 'jump',
                   position,
                   data: {
                     nodeType: 'jump' as const,
-                    label: n.label || 'A',
+                    label: n.label,  // Keep for backwards compatibility
+                    landId: n.land || undefined,  // New format: direct land reference
                     colorIndex: n.colorIndex ?? 0,
                   },
                 });
@@ -718,13 +741,14 @@ export default function App() {
               }
 
               if (n.type === 'land') {
-                placedNodes.push({
+                allNodes.push({
                   id: n.id || crypto?.randomUUID?.() || String(Date.now() + index),
                   type: 'land',
                   position,
                   data: {
                     nodeType: 'land' as const,
-                    label: n.label || 'A',
+                    label: n.label,  // Keep for backwards compatibility
+                    nextNodeId: n.nextNode || undefined,  // New format: next node reference
                     colorIndex: n.colorIndex ?? 0,
                   },
                 });
@@ -734,7 +758,7 @@ export default function App() {
               const ad = n.ad || n.data?.ad || n.data?.def?.ad || n.data?.label || 'Imported Node';
               const aciklama = n.aciklama || n.data?.aciklama || n.data?.def?.aciklama || '';
 
-              placedNodes.push({
+              allNodes.push({
                 id: n.id || crypto?.randomUUID?.() || String(Date.now() + index),
                 type: 'box',
                 position,
@@ -747,24 +771,28 @@ export default function App() {
               });
             });
 
-            setNodes(placedNodes);
-
+            // Also support explicit templates array (for backwards compatibility)
             if (data.templates && Array.isArray(data.templates)) {
-              const importedTemplates: WorkflowDefFromDB[] = data.templates.map((t: any, i: number) => ({
-                id: t.id || `template-${i}`,
-                ad: t.ad || '',
-                aciklama: t.aciklama || '',
-                x: -1,
-                y: -1,
-                type: t.type || 'box',
-                jumpLandLabel: t.jumpLandLabel,
-                colorIndex: t.colorIndex,
-              }));
-              setWorkflowTemplates(importedTemplates);
+              data.templates.forEach((t: any, i: number) => {
+                const ad = t.ad || '';
+                const aciklama = t.aciklama || '';
+                allNodes.push({
+                  id: t.id || `template-explicit-${i}`,
+                  type: 'box',
+                  position: { x: -1, y: -1 },  // Template marker
+                  data: {
+                    nodeType: 'box' as const,
+                    label: ad,
+                    def: { ad, aciklama } as WorkflowDef,
+                  },
+                });
+              });
             }
 
+            setNodes(allNodes);
+
             const adToNodeId = new Map<string, string>();
-            placedNodes.forEach((n) => {
+            allNodes.forEach((n) => {
               if (n.type === 'box' && n.data.nodeType === 'box') {
                 const boxData = n.data as BoxData;
                 const ad = boxData.def?.ad || boxData.label;
@@ -782,8 +810,12 @@ export default function App() {
 
                   if (!sourceId || !targetId) return null;
 
+                  // Use provided UUID or generate new one (ensures UUID4 format)
+                  const isValidUUID = e.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(e.id);
+                  const edgeId = isValidUUID ? e.id : (crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+
                   return {
-                    id: e.id || crypto?.randomUUID?.() || String(Date.now() + Math.random()),
+                    id: edgeId,
                     source: sourceId,
                     target: targetId,
                     animated: true,
@@ -815,9 +847,17 @@ export default function App() {
 
     if (node.type === 'jump' || node.type === 'land') {
       const jumpLandData = node.data as JumpData | LandData;
-      setJumpLandLabel(jumpLandData.label || 'A');
       setJumpLandColorIndex(jumpLandData.colorIndex || 0);
       setEditingNodeType(node.type as 'jump' | 'land');
+      
+      // For jump nodes, set the selected land ID
+      if (node.type === 'jump') {
+        const jumpData = node.data as JumpData;
+        setSelectedLandId(jumpData.landId || null);
+      } else {
+        setSelectedLandId(null);
+      }
+      
       setIsJumpLandModalOpen(true);
     } else {
       const boxData = node.data as BoxData;
@@ -848,6 +888,7 @@ export default function App() {
     setIsJumpLandModalOpen(false);
     setEditingNodeId(null);
     setEditingNodeType(null);
+    setSelectedLandId(null);
   }, []);
 
   const saveNode = useCallback(() => {
@@ -887,51 +928,36 @@ export default function App() {
   const saveJumpLandNode = useCallback(() => {
     if (!editingNodeId) return;
 
-    const labelTrimmed = jumpLandLabel.trim() || 'A';
-    
     setNodes((nds) => {
       return nds.map((n) => {
         if (n.id === editingNodeId) {
           if (n.data.nodeType === 'jump') {
+            // For Jump: save selected land ID and color
             return {
               ...n,
               data: {
                 nodeType: 'jump' as const,
-                label: labelTrimmed,
+                landId: selectedLandId || undefined,
                 colorIndex: jumpLandColorIndex,
               },
             };
           } else if (n.data.nodeType === 'land') {
+            // For Land: just save color (no label needed)
             return {
               ...n,
               data: {
                 nodeType: 'land' as const,
-                label: labelTrimmed,
                 colorIndex: jumpLandColorIndex,
               },
             };
           }
         }
-        
-        if ((n.type === 'jump' || n.type === 'land') && 
-            n.data.label === labelTrimmed &&
-            n.id !== editingNodeId &&
-            n.data.nodeType !== 'box') {
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              colorIndex: jumpLandColorIndex,
-            },
-          };
-        }
-        
         return n;
       });
     });
 
     closeJumpLandModal();
-  }, [editingNodeId, jumpLandLabel, jumpLandColorIndex, setNodes, closeJumpLandModal]);
+  }, [editingNodeId, selectedLandId, jumpLandColorIndex, setNodes, closeJumpLandModal]);
 
   const onModalKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -948,6 +974,74 @@ export default function App() {
     },
     [closeJumpLandModal, saveJumpLandNode]
   );
+
+  // Show unauthorized page if no token - but allow static data or new start
+  if (isUnauthorized && !nodes.length) {
+    return (
+      <div
+        style={{
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#1a1a2e',
+          color: '#fff',
+          flexDirection: 'column',
+          gap: 20,
+        }}
+      >
+        <div style={{ fontSize: 72 }}>🔒</div>
+        <div style={{ fontSize: 28, fontWeight: 700 }}>Yetkisiz Erişim</div>
+        <div style={{ fontSize: 16, color: '#888', textAlign: 'center', maxWidth: 400, marginBottom: 8 }}>
+          Dinamik veri için geçerli bir token gereklidir.
+          <br />
+          URL'de <code style={{ background: '#333', padding: '2px 6px', borderRadius: 4 }}>?t=TOKEN</code> parametresi bulunamadı.
+        </div>
+        <div style={{ fontSize: 14, color: '#aaa', marginBottom: 8 }}>
+          Aşağıdaki seçeneklerden birini kullanabilirsiniz:
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              setBypassAuth(true);
+              setIsLoading(false);
+              setNodes([]);
+              setEdges([]);
+              setDataSource(null);
+            }}
+            style={{
+              padding: '12px 24px',
+              borderRadius: 8,
+              border: '2px solid #4fc3f7',
+              background: 'transparent',
+              color: '#4fc3f7',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Yeni
+          </button>
+          <button
+            onClick={loadStaticData}
+            style={{
+              padding: '12px 24px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#ff9800',
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Statik Veri ile Devam Et
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -997,6 +1091,9 @@ export default function App() {
       >
         <div style={{ fontSize: 48 }}>⚠️</div>
         <div style={{ fontSize: 18, color: '#ff5252' }}>Hata: {error}</div>
+        <div style={{ fontSize: 14, color: '#aaa', marginTop: 8 }}>
+          Aşağıdaki seçeneklerden birini kullanabilirsiniz:
+        </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           <button
             onClick={() => window.location.reload()}
@@ -1011,7 +1108,7 @@ export default function App() {
               cursor: 'pointer',
             }}
           >
-            Tekrar Dene
+            Dinamik (Tekrar Dene)
           </button>
           <button
             onClick={() => {
@@ -1021,7 +1118,7 @@ export default function App() {
             style={{
               padding: '12px 24px',
               borderRadius: 8,
-              border: '1px solid #4fc3f7',
+              border: '2px solid #4fc3f7',
               background: 'transparent',
               color: '#4fc3f7',
               fontSize: 14,
@@ -1029,7 +1126,7 @@ export default function App() {
               cursor: 'pointer',
             }}
           >
-            Boş Başla
+            Yeni
           </button>
           <button
             onClick={loadStaticData}
@@ -1056,7 +1153,7 @@ export default function App() {
       <ReactFlow
         onInit={onInit}
         nodeTypes={nodeTypes}
-        nodes={nodes}
+        nodes={visibleNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
@@ -1232,41 +1329,19 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Etiket (Label)</span>
-                <input
-                  value={jumpLandLabel}
-                  onChange={(e) => setJumpLandLabel(e.target.value.toUpperCase())}
-                  placeholder="Örn: A, B, LOOP_1"
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #ccc',
-                    outline: 'none',
-                    fontSize: 16,
-                    fontWeight: 600,
-                  }}
-                />
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
-                  Aynı etikete sahip Jump ve Land node'ları eşleşir
-                </span>
-              </label>
-
-              {getExistingLabels().length > 0 && (
+              {/* For Jump nodes: Show Land selection dropdown */}
+              {editingNodeType === 'jump' && (
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Mevcut Etiketler</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Bağlı Land Node</span>
                   <select
-                    value=""
+                    value={selectedLandId || ''}
                     onChange={(e) => {
+                      setSelectedLandId(e.target.value || null);
+                      // Match color with selected land
                       if (e.target.value) {
-                        setJumpLandLabel(e.target.value);
-                        const existingNode = nodes.find(
-                          (n) => (n.type === 'jump' || n.type === 'land') && 
-                                 n.data.label === e.target.value
-                        );
-                        if (existingNode && existingNode.data.nodeType !== 'box') {
-                          const jumpLandData = existingNode.data as JumpData | LandData;
-                          setJumpLandColorIndex(jumpLandData.colorIndex);
+                        const landNode = nodes.find((n) => n.id === e.target.value);
+                        if (landNode && landNode.data.nodeType === 'land') {
+                          setJumpLandColorIndex((landNode.data as LandData).colorIndex);
                         }
                       }
                     }}
@@ -1275,14 +1350,34 @@ export default function App() {
                       borderRadius: 8,
                       border: '1px solid #ccc',
                       outline: 'none',
+                      fontSize: 14,
                     }}
                   >
-                    <option value="">-- Mevcut bir etiket seç --</option>
-                    {getExistingLabels().map((label) => (
-                      <option key={label} value={label}>{label}</option>
+                    <option value="">-- Land seçin --</option>
+                    {getAvailableLandNodes().map((land) => (
+                      <option key={land.id} value={land.id}>
+                        {land.displayName}
+                      </option>
                     ))}
                   </select>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+                    Bu Jump'ın atlayacağı Land node'unu seçin
+                  </span>
+                  {getAvailableLandNodes().length === 0 && (
+                    <span style={{ fontSize: 11, color: '#ffeb3b' }}>
+                      ⚠️ Bağlanabilecek Land node yok. Önce Land ekleyin.
+                    </span>
+                  )}
                 </label>
+              )}
+
+              {/* For Land nodes: Just info text */}
+              {editingNodeType === 'land' && (
+                <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)' }}>
+                    Land node'ları Jump node'larından gelen bağlantıları alır.
+                  </span>
+                </div>
               )}
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1360,17 +1455,49 @@ export default function App() {
             borderRadius: 8,
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
             zIndex: 10000,
-            minWidth: 280,
-            overflow: 'hidden',
+            minWidth: 200,
+            overflow: 'visible',
           }}
         >
-          <div style={{ position: 'relative' }}>
+          {/* Yeni Node Ekle - standalone button */}
+          <button
+            onClick={addNewEmptyNode}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'transparent',
+              border: 'none',
+              color: '#fff',
+              fontSize: 14,
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#2a2a4e';
+              setNodeMenuHovered(false);
+            }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{ fontSize: 18 }}>➕</span>
+            Yeni Node Ekle
+          </button>
+
+          <div style={{ height: 1, background: '#4fc3f7', opacity: 0.3 }} />
+
+          {/* Nodelar - with flyout submenu */}
+          <div
+            style={{ position: 'relative' }}
+            onMouseEnter={() => setNodeMenuHovered(true)}
+            onMouseLeave={() => setNodeMenuHovered(false)}
+          >
             <button
-              onClick={addNewEmptyNode}
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                background: 'transparent',
+                background: nodeMenuHovered ? '#2a2a4e' : 'transparent',
                 border: 'none',
                 color: '#fff',
                 fontSize: 14,
@@ -1378,84 +1505,72 @@ export default function App() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#2a2a4e')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ fontSize: 18 }}>➕</span>
-              Yeni Node Ekle
-            </button>
-            
-            <button
-              onClick={toggleNodeTypeSelector}
-              style={{
-                position: 'absolute',
-                right: 8,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: '#4fc3f7',
-                border: 'none',
-                borderRadius: 4,
-                color: '#1a1a2e',
-                padding: '4px 8px',
-                fontSize: 12,
-                cursor: 'pointer',
-                fontWeight: 600,
+                justifyContent: 'space-between',
               }}
             >
-              {showNodeTypeSelector ? '▲' : '▼'} Türler ({workflowTemplates.length})
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18 }}>📦</span>
+                Nodelar
+              </span>
+              <span style={{ fontSize: 12, color: '#888' }}>▶</span>
             </button>
-          </div>
 
-          {showNodeTypeSelector && (
-            <div
-              style={{
-                maxHeight: 300,
-                overflowY: 'auto',
-                background: '#252545',
-                borderTop: '1px solid #4fc3f7',
-                borderBottom: '1px solid #4fc3f7',
-              }}
-            >
-              {workflowTemplates.length === 0 ? (
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    color: '#888',
-                    fontSize: 12,
-                    textAlign: 'center',
-                  }}
-                >
-                  Henüz işlem türü yüklenmedi
-                </div>
-              ) : (
-                workflowTemplates.map((template, index) => (
-                  <button
-                    key={`${template.id}-${index}`}
-                    onClick={() => addNodeFromTemplate(template)}
+            {/* Flyout submenu */}
+            {nodeMenuHovered && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '100%',
+                  top: 0,
+                  background: '#1a1a2e',
+                  border: '1px solid #4fc3f7',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                  minWidth: 250,
+                  maxHeight: 400,
+                  overflowY: 'auto',
+                  marginLeft: 4,
+                }}
+              >
+                {templates.length === 0 ? (
+                  <div
                     style={{
-                      width: '100%',
-                      padding: '8px 16px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#fff',
-                      fontSize: 11,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid rgba(79, 195, 247, 0.1)',
-                      wordBreak: 'break-all',
+                      padding: '12px 16px',
+                      color: '#888',
+                      fontSize: 12,
+                      textAlign: 'center',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#3a3a6e')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    title={template.aciklama}
                   >
-                    {template.ad}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
+                    Henüz node yüklenmedi
+                  </div>
+                ) : (
+                  templates.map((template, index) => (
+                    <button
+                      key={`${template.id}-${index}`}
+                      onClick={() => addNodeFromTemplate(template)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#fff',
+                        fontSize: 12,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid rgba(79, 195, 247, 0.1)',
+                        wordBreak: 'break-all',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#3a3a6e')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      title={template.aciklama}
+                    >
+                      {template.ad}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           <div style={{ height: 1, background: '#4fc3f7', opacity: 0.3 }} />
 
